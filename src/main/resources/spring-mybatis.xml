@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/context
+       http://www.springframework.org/schema/context/spring-context.xsd
+       http://www.springframework.org/schema/tx
+       http://www.springframework.org/schema/tx/spring-tx.xsd http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+
+
+
+
+
+    <!-- 扫描service包下所有使用注解的类型 -->
+    <context:component-scan base-package="com.tian.service"/>
+
+    <!-- 扫描controller包下所有使用注解的类型 -->
+    <context:component-scan base-package="com.tian.util"/>
+
+    <context:component-scan base-package="com.tian.model" />
+
+
+
+    <!--
+        <bean id="loggingAspect" class="com.tian.aop.LoggingAspect" />
+
+        <aop:config>
+
+            <aop:pointcut id="pointcut" expression="execution(* com.tian.service.StudentService.*(..))"></aop:pointcut>
+
+
+            <aop:aspect ref="loggingAspect" order="1">
+                <aop:before method="beforeMethod" pointcut-ref="pointcut"/>
+                <aop:after method="afterMethod" pointcut-ref="pointcut"/>
+                <aop:after-returning method="afterReturningMethod" pointcut-ref="pointcut"  returning="retVal"/>
+                <aop:after-throwing method="afterThrowingMethod" pointcut-ref="pointcut" throwing="ex"/>
+                <aop:around method="aroundMethod" pointcut-ref="pointcut" />
+            </aop:aspect>
+
+
+        </aop:config>
+    -->
+
+
+    <!--   <bean id="messageSource" class="org.springframework.context.support.ReloadableResourceBundleMessageSource">
+           <property name="defaultEncoding" value="iso-8859-1" />
+
+           &lt;!&ndash;设置“useCodeAsDefaultMessage”，默认为false，这样当Spring在ResourceBundle中找不到messageKey的话，
+           就抛出NoSuchMessageException，   把它设置为True，则找不到不会抛出异常，而是使用messageKey作为返回值。&ndash;&gt;
+           <property name="useCodeAsDefaultMessage" value="true" />
+           <property name="cacheSeconds" value="10"></property>
+           <property name="basenames">
+               <list>
+                   <value>i18n.messages</value>
+               </list>
+           </property>
+       </bean>-->
+
+
+
+
+    <!-- 配置数据库相关参数properties的属性：${url} -->
+    <!--<context:property-placeholder location="classpath:*.properties"/>-->
+
+    <context:property-placeholder location="classpath:database.properties" ignore-unresolvable="true"
+    />
+    <context:property-placeholder location="classpath:redis.properties" ignore-unresolvable="true"
+    />
+
+
+    <!--数据库连接池-->
+    <bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+        <property name="driverClass" value="${jdbc.driverClass}"/>
+        <property name="jdbcUrl" value="${jdbc.url}"/>
+        <property name="user" value="${jdbc.username}"/>
+        <property name="password" value="${jdbc.password}"/>
+        <property name="maxPoolSize" value="${c3p0.maxPoolSize}"/>
+        <property name="minPoolSize" value="${c3p0.minPoolSize}"/>
+        <property name="autoCommitOnClose" value="${c3p0.autoCommitOnClose}"/>
+        <property name="checkoutTimeout" value="${c3p0.checkoutTimeout}"/>
+        <property name="acquireRetryAttempts" value="${c3p0.acquireRetryAttempts}"/>
+
+    </bean>
+
+    <!-- Jedis连接池配置参数 -->
+    <bean id="jedisPoolConfig" class="redis.clients.jedis.JedisPoolConfig">
+        <property name="maxIdle" value="${redis.maxIdle}"></property>
+        <property name="maxTotal" value="${redis.maxTotal}"></property>
+        <property name="maxWaitMillis" value="${redis.maxWaitMillis}"></property>
+        <property name="testOnBorrow" value="${redis.testOnBorrow}"></property>
+    </bean>
+
+    <!--redis连接工厂  -->
+    <bean id="jedisConnectionFactory" class="org.springframework.data.redis.connection.jedis.JedisConnectionFactory">
+        <property name="hostName" value="${redis.hostName}"></property>
+        <property name="port" value="${redis.port}"></property>
+        <property name="timeout" value="${redis.timeout}"></property>
+        <property name="password" value="${redis.password}"></property>
+        <property name="poolConfig" ref="jedisPoolConfig"></property>
+    </bean>
+
+    <!--redis操作模版,使用该对象可以操作redis  -->
+    <bean id="redisTemplate" class="org.springframework.data.redis.core.RedisTemplate">
+    <property name="connectionFactory" ref="jedisConnectionFactory"></property>
+    <property name="keySerializer" >
+        <bean class="org.springframework.data.redis.serializer.StringRedisSerializer"/>
+    </property>
+    <property name="hashKeySerializer" >
+        <bean class="org.springframework.data.redis.serializer.StringRedisSerializer"/>
+    </property>
+    <property name="valueSerializer" >
+        <bean class="org.springframework.data.redis.serializer.JdkSerializationRedisSerializer"/>
+    </property>
+    <property name="hashValueSerializer" >
+        <bean class="org.springframework.data.redis.serializer.JdkSerializationRedisSerializer"/>
+    </property>
+        <!--开启事务  -->
+        <property name="enableTransactionSupport" value="true"></property>
+    </bean>
+
+
+    <!--
+         用途：可以使用@Value("#{prop.属性名}")注解读取properties文件配置的值，再给字段赋值
+              方法1：注解在字段上，给字段赋值
+              方法2：注解在字段的setter方法中赋值
+              注意：@Value("#{prop.属性名}") 中的 prop 是 注册的PropertiesFactoryBean的 Bean ID
+     -->
+    <util:properties id="sendCloud" location="classpath:sendCloud.properties"/>
+
+
+    <bean id="smsSDK" class="com.tian.util.SMS">
+        <constructor-arg name="serverIp" value="app.cloopen.com"/>
+        <constructor-arg name="serverPort" value="8883"/>
+        <constructor-arg name="accountSid" value="8aaf07086a58b9ec016a67e0dfba0a42"/>
+        <constructor-arg name="accountToken" value="d472f98dec7743308e2aa23a427872a2"/>
+        <constructor-arg name="appId" value="8aaf07086a58b9ec016a67e0e0080a48"/>
+
+    </bean>
+
+    <!--阿里图片存储-->
+    <context:property-placeholder location="classpath:oss.properties" ignore-unresolvable="true"/>
+    <bean id="ossBean" class="com.tian.model.OssBean">
+        <property name="accessKeyId" value="${oss.accessKeyId}"/>
+        <property name="accessKeySecret" value="${oss.accessKeySecret}"/>
+        <property name="bucketName" value="${oss.bucketName}"/>
+        <property name="contentype" value="${oss.contentype}"/>
+        <property name="endpoint" value="${oss.endpoint}"/>
+    </bean>
+
+    <!-- 配置SqlSessionFactory对象 -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <!-- 注入数据库连接池 -->
+        <property name="dataSource" ref="dataSource"/>
+        <!-- 扫描model包 使用别名 -->
+
+        <property name="typeAliasesPackage" value="com.tian.model"/>
+        <!-- 扫描sql配置文件:mapper需要的xml文件 -->
+        <!--<property name="mapperLocations">
+             <list>
+                 <value>classpath:mapper/LeavewordsMapper.xml</value>
+                 <value>classpath:mapper/ProductionManageMapper.xml</value>
+                 <value>classpath:mapper/FirstShowreelMapper.xml</value>
+                 <value>classpath:mapper/SecondShowreelMapper.xml</value>
+                 <value>classpath:mapper/StudioManageSrevice.xml</value>
+                 <value>classpath:mapper/BannerManageMapper.xml</value>
+         </list>
+
+        </property>-->
+        <property name="configLocation" value="classpath:mybatis-config.xml"/>
+
+
+
+    </bean>
+
+    <!-- 配置扫描Dao接口包，动态实现Dao接口，注入到spring容器中 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <!-- 注入sqlSessionFactory -->
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
+        <!-- 给出需要扫描Dao接口包 -->
+        <property name="basePackage" value="com.tian.dao"/>
+    </bean>
+
+    <!-- 配置事务管理器 -->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <!-- 注入数据库连接池 -->
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <bean id="RMIStudentServiceImpl" class="com.tian.service.impl.StudentServiceImpl"/>
+        <!--将学生类发布为RMI服务-->
+    <bean class="org.springframework.remoting.rmi.RmiServiceExporter">
+        <property name="serviceName" value="RMIStudent"/>
+        <property name="service" ref="RMIStudentServiceImpl"/>
+        <property name="serviceInterface" value="com.tian.service.StudentService"></property>
+        <property name="registryPort" value="28388"></property>
+        <property name="servicePort" value="28388"></property>
+    </bean>
+
+    <bean id="RMIJobServiceImpl" class="com.tian.service.impl.JobServiceImpl"/>
+    <!--将职业类发布为RMI服务-->
+    <bean class="org.springframework.remoting.rmi.RmiServiceExporter">
+        <property name="serviceName" value="RMIJob"/>
+        <property name="service" ref="RMIJobServiceImpl"/>
+        <property name="serviceInterface" value="com.tian.service.JobService"></property>
+        <property name="registryPort" value="28388"></property>
+        <property name="servicePort" value="28388"></property>
+    </bean>
+
+
+    <bean id="RMIUserServiceImpl" class="com.tian.service.impl.UserServiceImpl"/>
+    <!--将用户类发布为RMI服务-->
+    <bean class="org.springframework.remoting.rmi.RmiServiceExporter">
+        <property name="serviceName" value="RMIUser"/>
+        <property name="service" ref="RMIUserServiceImpl"/>
+        <property name="serviceInterface" value="com.tian.service.UserService"></property>
+        <property name="registryPort" value="28388"></property>
+        <property name="servicePort" value="28388"></property>
+    </bean>
+
+    <bean id="RMIUploadServiceImpl" class="com.tian.service.impl.UploadServiceImpl"/>
+    <!--将上传类发布为RMI服务-->
+    <bean class="org.springframework.remoting.rmi.RmiServiceExporter">
+        <property name="serviceName" value="RMIUpload"/>
+        <property name="service" ref="RMIUploadServiceImpl"/>
+        <property name="serviceInterface" value="com.tian.service.UploadService"></property>
+        <property name="registryPort" value="28388"></property>
+        <property name="servicePort" value="28388"></property>
+    </bean>
+
+
+
+
+    <!-- 配置基于注解的声明式事务 -->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+
+
+</beans>
